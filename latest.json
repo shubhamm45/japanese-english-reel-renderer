@@ -1,0 +1,13 @@
+{
+  "request_id": "ja-smoke-20261010-01",
+  "status": "ready",
+  "video_url": "https://shubhamm45.github.io/japanese-english-reel-renderer/reels/ja-smoke-20261010-01/reel.mp4",
+  "cover_url": "https://shubhamm45.github.io/japanese-english-reel-renderer/reels/ja-smoke-20261010-01/cover.jpg",
+  "design_version": 2,
+  "title": "Say good morning like a native",
+  "duration_seconds": 7.63,
+  "width": 1080,
+  "height": 1920,
+  "created_at": "2026-10-10T08:22:37.613103+00:00",
+  "test_audio": true
+}
