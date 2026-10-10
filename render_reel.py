@@ -211,7 +211,7 @@ def card(label, primary, secondary, title, index, dest):
     # Small editorial masthead and lesson number.
     d.rounded_rectangle((88, 170, 408, 226), radius=28, fill=ink)
     dtext(d, (111, 182), "DAILY / JAPANESE", 27, True, cream)
-    dtext(d, (88, 244), "@englishwithjapanese.learn", 24, True, "#5d706a")
+    dtext(d, (88, 244), "@japanesewithenglish.learn", 24, True, "#5d706a")
     dtext(d, (815, 180), f"0{index} / 03", 28, True, ink)
     headlines = ["今日のフレーズ", "意味を理解する", "実用的な例文"]
     endings = ["こう言うよ。", "しっかり理解しよう。", "練習してみよう。"]
