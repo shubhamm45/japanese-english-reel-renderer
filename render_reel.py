@@ -1,7 +1,8 @@
 """Render one bilingual (English-teaches-Japanese) lesson and publish a manifest.
 
 Lesson JSON schema:
-  title, phrase, phrase_romaji, meaning_en, usage_en, example, example_en,
+  title, phrase, phrase_romaji, meaning_en, usage_en, example, example_romaji,
+  example_en,
   say_it, get_it, use_it  (English narration scripts, Japanese words embedded),
   narration_audio: {say_it, get_it, use_it} (Qwen TTS voiceover URLs, fail-closed),
   level, category, topic, caption
@@ -34,7 +35,7 @@ def run(args):
 LIMITS = {
     "title": 100, "phrase": 180, "phrase_romaji": 120,
     "meaning_en": 180, "usage_en": 300,
-    "example": 180, "example_en": 180,
+    "example": 180, "example_romaji": 180, "example_en": 180,
     "say_it": 200, "get_it": 120, "use_it": 260,
 }
 
@@ -201,7 +202,7 @@ def fit_block(draw, text, width, max_height, start_size, min_size, bold=True):
         size -= 2
 
 
-def card(label, primary, secondary, title, index, dest):
+def card(label, primary, secondary, title, index, dest, tertiary=None):
     # Keep key content inside the central safe area for Reel controls/captions.
     cream, ink, coral, mint = "#f5f1e8", "#172b29", "#ff704f", "#c9e9d7"
     im = Image.new("RGB", (1080, 1920), cream)
@@ -227,16 +228,34 @@ def card(label, primary, secondary, title, index, dest):
     dtext(d, (132, 612), small_label, 26, True, fg)
     d.line((132, 668, 890, 668), fill=fg, width=2)
     # Primary block (Japanese phrase / English explanation), then secondary block.
-    size_p, lines_p = fit_block(d, primary, 746, 300, 84, 30)
+    # Page 3's primary is a full example sentence and its secondary carries
+    # romaji + English, so page 3 caps the primary block shorter and starts
+    # the secondary right below wherever the primary actually ended.
+    size_p, lines_p = fit_block(d, primary, 746, 240 if index == 3 else 300, 84, 30)
     y = 700
     for line in lines_p:
         dtext(d, (132, y), line, size_p, True, fg)
         y += size_p + 18
-    size_s, lines_s = fit_block(d, secondary, 746, 130, 44, 24, bold=False)
-    y = 1030
-    for line in lines_s:
-        dtext(d, (132, y), line, size_s, False, fg)
-        y += size_s + 14
+    if index == 3 and tertiary is not None:
+        # Page 3: three separate blocks with visible gaps — Japanese example,
+        # then romaji, then English — never one clubbed-together text run.
+        # Romaji + English are fitted as ONE block (shared budget, one font
+        # size) and only drawn as two groups with a gap between them, so the
+        # separation costs no fitting headroom.
+        y += 34
+        size_s, lines_s = fit_block(d, f"{secondary}\n{tertiary}", 746, 1180 - y, 44, 20, bold=False)
+        split = len(wrap(d, secondary, size_s, False, 746))
+        for i, line in enumerate(lines_s):
+            if i == split:
+                y += 16
+            dtext(d, (132, y), line, size_s, False, fg)
+            y += size_s + 14
+    else:
+        size_s, lines_s = fit_block(d, secondary, 746, 130, 44, 24, bold=False)
+        y = 1030
+        for line in lines_s:
+            dtext(d, (132, y), line, size_s, False, fg)
+            y += size_s + 14
     # Deliberate supporting visual, with a different learning cue per scene.
     # Bottom block sits above y=1600 to stay clear of IG's caption/action overlay.
     d.rounded_rectangle((88, 1230, 944, 1408), radius=32, fill="#ffffff")
@@ -294,15 +313,18 @@ def render(lesson, request_id, base_url, public, test_audio=False):
         ("日本語フレーズ", lesson["phrase"],
          f"{lesson['phrase_romaji']} — {lesson['meaning_en']}", "say_it"),
         ("英語で理解する", lesson["usage_en"], lesson["phrase"], "get_it"),
-        ("実践的な例文", lesson["example"], lesson["example_en"], "use_it"),
+        ("実践的な例文", lesson["example"], lesson["example_romaji"],
+         "use_it", lesson["example_en"]),
     ]
     narration_urls = lesson.get("narration_audio") or {}
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         segments = []
-        for index, (label, primary, secondary, slot) in enumerate(sections, 1):
+        for index, entry in enumerate(sections, 1):
+            label, primary, secondary, slot = entry[:4]
+            tertiary = entry[4] if len(entry) > 4 else None
             png, audio, video = [tmp / f"{index}.{ext}" for ext in ("png", "mp3", "mp4")]
-            card(label, primary, secondary, lesson["title"], index, png)
+            card(label, primary, secondary, lesson["title"], index, png, tertiary)
             if test_audio:
                 run(["ffmpeg", "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=2", str(audio)])
             else:
